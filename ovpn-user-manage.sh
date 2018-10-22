@@ -64,6 +64,14 @@ case ${feature_choose} in
 			echo -e "${B}Find same user:${E} ${Y}${new_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
 			exit 0
 		fi
+		
+		# Randomly generate certificate password.
+		char_1=$(echo ${new_user} | cut -c1)
+		char_cap_1=$(echo ${new_user} | cut -c1 | tr '[:lower:]' '[:upper:]')
+		char_2=$(echo ${new_user} | cut -c2)
+		py_pass=$(python pass-generator.py)
+		cert_pass=$(echo ${char_1}${char_2}${py_pass}${char_cap_1}${char_2})
+		echo -e "${B}Recommended certificate password:${E} ${Y}${cert_pass}${E}"
 
 		# Start create new user <new username>.ovpn file.
 		source /etc/openvpn/easy-rsa/2.0/vars
