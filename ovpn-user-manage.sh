@@ -129,6 +129,15 @@ case ${feature_choose} in
 		# Enter name.
 		read -p "$(echo -e "${B}Please enter the user want to revoke:${E}") " revoke_user
 
+                # Confirm user exist.
+                check_username=$(ls /etc/openvpn/user | grep ${revoke_user} -c || true)
+                if [[ ${check_username} == 1 ]]; then
+                        true
+                else
+                        echo -e "${B}Can not be found${E} ${Y}${revoke_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
+                        exit 0
+                fi
+
 		# Confirm revoke user.
 		read -p "$(echo -e "${R}Are you sure continue revoke${E} ${Y}${revoke_user}${E}${R} ?(Y/N)${E}") " confirm_revoke
 		if [[ ${confirm_revoke} == Y || ${confirm_revoke} == y ]]; then
