@@ -104,7 +104,7 @@ case ${feature_choose} in
 		echo ${readme_text} >> /etc/openvpn/user/${new_user}/Readme.txt
 
 		# Create archive password & archive file.
-		zip_pw=$(echo Bw@$RANDOM$RANDOM)
+		zip_pw=$(echo Sk@$RANDOM$RANDOM)
 		text_file="/etc/openvpn/user/${new_user}/Readme.txt"
 		ovpn_file="/etc/openvpn/user/${new_user}/${new_user}.ovpn"
 		7z a -mhe -p${zip_pw} ${new_user}.7z ${text_file} ${ovpn_file}
