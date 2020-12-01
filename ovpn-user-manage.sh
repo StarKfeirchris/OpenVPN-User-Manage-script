@@ -13,7 +13,8 @@ E="\e[0m"
 # Check script location.
 now_dir=$(pwd)
 rsa_dir='/etc/openvpn/easy-rsa/2.0'
-if [[ ${now_dir} == ${rsa_dir} ]]; then
+if [[ ${now_dir} == ${rsa_dir} ]];
+then
 	true
 else
 	echo -e "${B}This script is not in${E} ${R}/etc/openvpn/easy-rsa/2.0/${E}"
@@ -23,16 +24,20 @@ fi
 
 # Check system virsion and package.
 os=$(lsb_release -irs | xargs)
-if [[ ${os} == 'CentOS '* ]]; then
+if [[ ${os} == 'CentOS '* ]];
+then
 	check_rpm=$(rpm -qa | grep p7zip -c || true)
-	if [[ ${check_rpm} == 2 ]]; then
+	if [[ ${check_rpm} == 2 ]];
+	then
 		true
 	else
 		yum install p7zip p7zip-plugins -y
 	fi
-elif [[ ${os} == 'Ubuntu '* ]]; then
+elif [[ ${os} == 'Ubuntu '* ]];
+then
 	check_dpkg=$(dpkg --get-selections | grep p7zip -c || true)
-	if [[ ${check_dpkg} == 1 ]]; then
+	if [[ ${check_dpkg} == 1 ]];
+	then
 		true
 	else
 		apt-get install p7zip-full -y
@@ -95,7 +100,8 @@ do
 
 		# Confirm that the user has not been created.
 		check_username=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep ${new_user}.key -c || true)
-		if [[ ${check_username} == 0 ]]; then
+		if [[ ${check_username} == 0 ]];
+		then
 			true
 		else
 			echo -e "${B}Find same user:${E} ${Y}${new_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
@@ -148,7 +154,8 @@ do
 
 		# Confirm that the archive file copy is successful.
 		check_file=$(ls | grep ${new_user}.7z -c || true)
-		if [[ ${check_file} == 1 ]]; then
+		if [[ ${check_file} == 1 ]];
+		then
 			true
 		else
 			echo -e "${Y}${new_user}.7z${E} ${B}does not exist, please check.${E}"
@@ -168,14 +175,14 @@ do
 		read -p "$(echo -e "${B}Please enter the user want to revoke:${E}") " revoke_user
 		
 		# Confirm user exist.
-        	check_username=$(ls /etc/openvpn/user | grep ${revoke_user} -c || true)
-        	if [[ ${check_username} == 1 ]];
+		heck_username=$(ls /etc/openvpn/user | grep ${revoke_user} -c || true)
+		if [[ ${check_username} == 1 ]];
 		then
 			true
-        	else
+		else
 			echo -e "${B}Can not be found${E} ${Y}${revoke_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
 			exit 0
-        	fi
+		fi
 
 		# Confirm revoke user.
 		read -p "$(echo -e "${R}Are you sure continue revoke${E} ${Y}${revoke_user}${E}${R} ?(Y/N)${E}") " confirm_revoke
@@ -204,7 +211,8 @@ do
 		echo
 		read -p "$(echo -e "${B}Are you sure continue?(Y/N)${E}") " del_confirm
 
-		if [[ ${del_confirm} == Y || ${del_confirm} == y ]]; then
+		if [[ ${del_confirm} == Y || ${del_confirm} == y ]];
+		then
 			true
 		else
 			exit 0
@@ -216,7 +224,8 @@ do
 		# Last check, enter "y" is start remove user certificate, enter "n" is stop.
 		echo -e "${B}You are about to delete the certificate of ${Y}${del_name}${E}${B},${E}"
 		read -p "$(echo -e "${R}Are you sure?(Y/N)${E}") " last_check
-		if [[ ${last_check} == Y || ${last_check} == y ]]; then
+		if [[ ${last_check} == Y || ${last_check} == y ]];
+		then
 			rm -rf /etc/openvpn/user/${del_name}
 			rm -f /etc/openvpn/easy-rsa/2.0/keys/${del_name}.*
 			echo -e "${B}Delete certificate is done. ${E}"
@@ -232,3 +241,4 @@ do
 	fi
 	continue
 done
+
