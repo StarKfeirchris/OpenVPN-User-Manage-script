@@ -43,18 +43,55 @@ else
 	exit 0
 fi
 
-# Select Add or Revoke user.
-read -p "
+# Select Add, Revoke or search user.
+# If the question option is entered incorrectly, it will be asked again.
+while read -p "
+$(echo -e "${Y}0${E} > ${G}Search user${E}")
 $(echo -e "${Y}1${E} > ${G}Add user${E}")
 $(echo -e "${Y}2${E} > ${R}Revoke user${E}")
 $(echo -e "${Y}D/d${E} > ${R}Delete user certificate${E}")
 
 $(echo -e "${B}Please choose one >${E}") " feature_choose
 
-case ${feature_choose} in
-	1 )
-		# Enter New user's name
-		read -p "$(echo -e "${B}Please enter the new user's name:${E}") " new_user
+do
+	if [[ ${feature_choose} == 0 ]];
+	then
+		# Enter user name.
+		# get_user_avl: avl = available; get_user_rm: rm = remove
+		# "grep -w" = Select only those lines containing matches that form  whole words.
+		read -p "$(echo -e "${B}Please enter the user name of the search:${E}") " ovpn_user
+		search_user_file=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep ${ovpn_user}.key -c || true)
+		get_user_avl=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep -w "${ovpn_user}" | grep "V" | wc -l || true)
+		get_user_rm=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep -w "${ovpn_user}" | grep "R" | wc -l || true)
+
+		echo -e "User Name: ${Y}${ovpn_user}${E}"
+
+		# Check user file.
+		if [[ ${search_user_file} == 1 ]];
+		then
+			echo -e "File exist: ${G}Ｏ${E}"
+		else
+			echo -e "File exist: ${R}Ｘ${E}"
+		fi
+
+		# Check user account.
+		if [[ ${get_user_avl} == 1 ]];
+		then
+			echo -e "Available: ${G}Ｏ${E}"
+		elif (( ${get_user_avl} > 1 ));
+		then
+			echo -e "Available: ${G}Ｏ${E}(There are ${R}${get_user_avl}${E} duplicate records!)"
+		elif (( ${get_user_rm} >= 1 ));
+		then
+			echo -e "Available: ${R}Ｘ${E}"
+		else
+			echo -e "Available: ${R}Not exist!${E}"
+		fi
+		break
+	elif [[ ${feature_choose} == 1 ]];
+	then
+		# Enter new user name.
+		read -p "$(echo -e "${B}Please enter the name of the new user:${E}") " new_user
 
 		# Confirm that the user has not been created.
 		check_username=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep ${new_user}.key -c || true)
@@ -64,7 +101,7 @@ case ${feature_choose} in
 			echo -e "${B}Find same user:${E} ${Y}${new_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
 			exit 0
 		fi
-		
+
 		# Randomly generate certificate password.
 		char_1=$(echo ${new_user} | cut -c1)
 		char_cap_1=$(echo ${new_user} | cut -c1 | tr '[:lower:]' '[:upper:]')
@@ -100,15 +137,15 @@ case ${feature_choose} in
 		echo '</key>' >> /etc/openvpn/user/${new_user}/${new_user}.ovpn
 		
 		# Enter <new username>.ovpn password again & Create Readme.txt.
-		read -p "$(echo -e "${B}Please enter the${E} ${R}password${E} ${B}for${E} ${Y}${new_user}${E}${B}'s certificate:${E}") " readme_text
+		read -p "$(echo -e "${B}Please enter the${E} ${R}password${E} ${B}for${E} ${Y}${new_user}${E}${B} certificate:${E}") " readme_text
 		echo ${readme_text} >> /etc/openvpn/user/${new_user}/Readme.txt
 
-		# Create archive password & archive file.
+		# Create archive password & archive file, "-mhe" = Encryption filename extension.
 		zip_pw=$(echo Sk@$RANDOM$RANDOM)
 		text_file="/etc/openvpn/user/${new_user}/Readme.txt"
 		ovpn_file="/etc/openvpn/user/${new_user}/${new_user}.ovpn"
 		7z a -mhe -p${zip_pw} ${new_user}.7z ${text_file} ${ovpn_file}
-		
+
 		# Confirm that the archive file copy is successful.
 		check_file=$(ls | grep ${new_user}.7z -c || true)
 		if [[ ${check_file} == 1 ]]; then
@@ -122,27 +159,31 @@ case ${feature_choose} in
 		rm -f /etc/openvpn/user/${new_user}/Readme.txt
 		
 		# Show archive file password to screen and finished.
-		echo -e "${G}${new_user}.7z${E} ${B}is here.${E}
+		echo -e "${G}${new_user}.7z${E} ${B}is here.${E}"
 		echo -e "${G}${new_user}.7z${E} ${B}password is${E} ${Y}${zip_pw}${E} ${B}, add user finished.${E}"
-		;;
-	2 )
+		break
+	elif [[ ${feature_choose} == 2 ]];
+	then
 		# Enter name.
 		read -p "$(echo -e "${B}Please enter the user want to revoke:${E}") " revoke_user
-
-                # Confirm user exist.
-                check_username=$(ls /etc/openvpn/user | grep ${revoke_user} -c || true)
-                if [[ ${check_username} == 1 ]]; then
-                        true
-                else
-                        echo -e "${B}Can not be found${E} ${Y}${revoke_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
+		
+		# Confirm user exist.
+        	check_username=$(ls /etc/openvpn/user | grep ${revoke_user} -c || true)
+        	if [[ ${check_username} == 1 ]];
+		then
+                	true
+        	else
+                	echo -e "${B}Can not be found${E} ${Y}${revoke_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
                         exit 0
-                fi
+        	fi
 
 		# Confirm revoke user.
 		read -p "$(echo -e "${R}Are you sure continue revoke${E} ${Y}${revoke_user}${E}${R} ?(Y/N)${E}") " confirm_revoke
-		if [[ ${confirm_revoke} == Y || ${confirm_revoke} == y ]]; then
+		if [[ ${confirm_revoke} == Y || ${confirm_revoke} == y ]];
+		then
 			true
-		elif [[ ${confirm_revoke} == N || ${confirm_revoke} == n ]]; then
+		elif [[ ${confirm_revoke} == N || ${confirm_revoke} == n ]];
+		then
 			echo -e "${B}Bye bye!${E}" 
 			exit 0
 		else
@@ -153,8 +194,9 @@ case ${feature_choose} in
 		# Start revoke user certificate.
 		source /etc/openvpn/easy-rsa/2.0/vars
 		sh /etc/openvpn/easy-rsa/2.0/revoke-full ${revoke_user}
-		;;
-	D|d )
+		break
+	elif [[ ${feature_choose} == D || ${feature_choose} == d ]];
+	then
 		# Show warning message and confirm continue.
 		echo -e "${R}!!!!!WARNING!!!!!${E}"
 		echo -e "${R}This option will delete the user certificate!${E}"
@@ -182,9 +224,11 @@ case ${feature_choose} in
 			echo -e "${B}Okay...you give up.${E}"
 			exit 0
 		fi
-		;;
-	* )
-		echo -e "${B}I do not know what you mean...${E}"
-		echo -e "${B}Bye Bye!${E}"
-		;;
-esac
+		break
+	else
+		echo -e "${Y}Please enter options number or D/d,${E}"
+		echo -e "${Y}or use Ctrl + C to exit.${E}"
+		sleep 2
+	fi
+	continue
+done
