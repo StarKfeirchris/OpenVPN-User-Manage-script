@@ -171,10 +171,10 @@ do
         	check_username=$(ls /etc/openvpn/user | grep ${revoke_user} -c || true)
         	if [[ ${check_username} == 1 ]];
 		then
-                	true
+			true
         	else
-                	echo -e "${B}Can not be found${E} ${Y}${revoke_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
-                        exit 0
+			echo -e "${B}Can not be found${E} ${Y}${revoke_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
+			exit 0
         	fi
 
 		# Confirm revoke user.
