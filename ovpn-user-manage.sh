@@ -44,8 +44,8 @@ fi
 ovpn_config_head=$(echo 'client
 dev tun
 proto udp
-remote vpn2.bridgewell.com 1194
-remote vpn.bridgewell.com 1194
+remote vpn2.vpnserveraddress.com 1194
+remote vpn.vpnserveraddress.com 1194
 nobind
 persist-key
 persist-tun
