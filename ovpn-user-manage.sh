@@ -71,13 +71,13 @@ read -p "$(echo -e "${B}Please enter user name:${E}") " ovpn_user
 
 # get_user_avl: avl = available ; get_user_rm: rm = remove
 # "grep -c" = Suppress normal output; instead print a count of matching lines for each input file.
-get_user_avl=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "${ovpn_user}/" | grep "V" -c || true)
-get_user_rm=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "${ovpn_user}/" | grep "R" -c || true)
+get_user_avl=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "=${ovpn_user}/" | grep "V" -c || true)
+get_user_rm=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "=${ovpn_user}/" | grep "R" -c || true)
 
 do
 	if [[ ${feature_choose} == 0 ]];
 	then
-		search_user_file=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep ${ovpn_user}.key -c || true)
+		search_user_file=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep -wc ${ovpn_user}.key || true)
 
 		echo -e "User Name: ${Y}${ovpn_user}${E}"
 
