@@ -117,7 +117,7 @@ do
 		char_1=$(echo ${ovpn_user} | cut -c1)
 		char_cap_1=$(echo ${ovpn_user} | cut -c1 | tr '[:lower:]' '[:upper:]')
 		char_2=$(echo ${ovpn_user} | cut -c2)
-		py_pass=$(python pass-generator.py)
+		py_pass=$(python ~/pass-generator.py)
 		cert_pass=$(echo ${char_1}${char_2}${py_pass}${char_cap_1}${char_2})
 		echo -e "${B}Recommended certificate password:${E} ${Y}${cert_pass}${E}"
 
