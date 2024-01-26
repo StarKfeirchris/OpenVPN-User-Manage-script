@@ -1,5 +1,5 @@
 #!/bin/bash
-# Release v4.5 ; last upsate: 20220715
+# Release v5.0 ; last upsate: 20240126
 
 # Set the execution environment, debug: set -xeo pipefail
 set -eo pipefail
@@ -12,7 +12,7 @@ B="\e[1;96m"
 E="\e[0m"
 
 # Chenge the script execution folder.
-cd /etc/openvpn/easy-rsa/2.0/
+cd /etc/openvpn/easy-rsa/
 
 # Check the system version and package.
 os=$(lsb_release -irs | xargs)
@@ -43,17 +43,16 @@ fi
 # Used when creating user ovpn files.
 ovpn_config_head=$(echo 'client
 dev tun
-proto udp
-remote vpn.vpnserver.com 1194
-remote vpn2.vpnserver.com 1194
+proto udp4
+remote vpn2.openvenserver.com 1194
+remote vpn.openvpnserver.com 1194
 nobind
 persist-key
 persist-tun
-comp-lzo
 verb 3
 
-cipher AES-256-CBC
-auth SHA256
+cipher AES-256-GCM
+auth SHA512
 ')
 
 # Select Add, Revoke or search user.
@@ -71,13 +70,13 @@ read -p "$(echo -e "${B}Please enter the user name:${E}") " ovpn_user
 
 # get_user_avl: avl = available ; get_user_rm: rm = remove
 # "grep -c" = Suppress normal output; instead print a count of matching lines for each input file.
-get_user_avl=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "=${ovpn_user}/" | grep "V" -c || true)
-get_user_rm=$(cat /etc/openvpn/easy-rsa/2.0/keys/index.txt | grep "=${ovpn_user}/" | grep "R" -c || true)
+get_user_avl=$(cat /etc/openvpn/easy-rsa/pki/index.txt | grep "=${ovpn_user}" | grep "V" -c || true)
+get_user_rm=$(cat /etc/openvpn/easy-rsa/pki/index.txt | grep "=${ovpn_user}" | grep "R" -c || true)
 
 do
 	if [[ ${feature_choose} == 0 ]];
 	then
-		search_user_file=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep -wc ${ovpn_user}.key || true)
+		search_user_file=$(ls /etc/openvpn/easy-rsa/pki/private/ | grep -wc ${ovpn_user}.key || true)
 
 		echo -e "User name: ${Y}${ovpn_user}${E}"
 
@@ -106,10 +105,10 @@ do
 	elif [[ ${feature_choose} == 1 ]];
 	then
 		# Confirm whether the user has been created.
-		check_username=$(ls /etc/openvpn/easy-rsa/2.0/keys/ | grep ${ovpn_user}.key -c || true)
+		check_username=$(ls /etc/openvpn/easy-rsa/pki/private/ | grep ${ovpn_user}.key -c || true)
 		if [[ ${check_username} == 1 ]];
 		then
-			echo -e "${B}Find the same user:${E} ${Y}${ovpn_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
+			echo -e "${B}Find the same user:${E} ${Y}${ovpn_user}${E}${B} !  please check ${E}${R}/etc/openvpn/client/${E}"
 			exit 0
 		fi
 
@@ -117,71 +116,90 @@ do
 		char_1=$(echo ${ovpn_user} | cut -c1)
 		char_cap_1=$(echo ${ovpn_user} | cut -c1 | tr '[:lower:]' '[:upper:]')
 		char_2=$(echo ${ovpn_user} | cut -c2)
-		py_pass=$(python ~/pass-generator.py)
+		py_pass=$(python3 ~/pass-generator.py)
 		cert_pass=$(echo ${char_1}${char_2}${py_pass}${char_cap_1}${char_2})
 		echo -e "${B}Recommended certificate password:${E} ${Y}${cert_pass}${E}"
 
 		# Start creating new user <new username>.ovpn files.
-		source /etc/openvpn/easy-rsa/2.0/vars
-		sh /etc/openvpn/easy-rsa/2.0/build-key-pass ${ovpn_user}
-				
+		sh /etc/openvpn/easy-rsa/easyrsa build-client-full ${ovpn_user}
+		
 		# Create folders for new user.
-		mkdir /etc/openvpn/user/${ovpn_user}
+		user_folder='/etc/openvpn/client/'
+		mkdir ${user_folder}${ovpn_user}
 				
-		# Copy the new user certificate file to /etc/openvpn/user/<new username>
-		\cp /etc/openvpn/easy-rsa/2.0/keys/${ovpn_user}.* /etc/openvpn/user/${ovpn_user}
+		# Copy the new user certificate file to /etc/openvpn/clinet/<new username>
+		\cp -rp /etc/openvpn/easy-rsa/pki/{ca.crt,issued/${ovpn_user}.crt,private/${ovpn_user}.key} ${user_folder}${ovpn_user}
 				
 		# Copy the OpenVPN config to <new username>.ovpn file.
-		echo -e "${ovpn_config_head}\n" >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
+		echo -e "${ovpn_config_head}\n" >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		
 		# Copy the new user certificate to <new username>.ovpn file.
-		echo '<ca>' >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
-		cat /etc/openvpn/easy-rsa/2.0/keys/ca.crt >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
-		echo '</ca>' >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
+		echo '<ca>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		cat ${user_folder}${ovpn_user}/ca.crt >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		echo '</ca>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		
-		echo '<cert>' >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
-		tail -n 30 /etc/openvpn/user/${ovpn_user}/${ovpn_user}.crt >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
-		echo '</cert>' >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
+		echo '<cert>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		tail -n 20 ${user_folder}${ovpn_user}/${ovpn_user}.crt >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		echo '</cert>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		
-		echo '<key>' >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
-		cat /etc/openvpn/user/${ovpn_user}/${ovpn_user}.key >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
-		echo '</key>' >> /etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn
+		echo '<key>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		cat ${user_folder}${ovpn_user}/${ovpn_user}.key >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		echo '</key>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		
 		# Enter the password of <new username>.ovpn again & create Readme.txt.
 		read -p "$(echo -e "${B}Please enter the${E} ${R}certificate password${E} ${B}of${E} ${Y}${ovpn_user}${E}${B} :${E}") " readme_text
-		echo ${readme_text} >> /etc/openvpn/user/${ovpn_user}/Readme.txt
+		echo ${readme_text} >> ${user_folder}${ovpn_user}/Readme.txt
 
 		# Create archive password & archive file, "-mhe" = Encryption filename extension.
-		zip_pw=$(echo Bw@$RANDOM$RANDOM)
-		text_file="/etc/openvpn/user/${ovpn_user}/Readme.txt"
-		ovpn_file="/etc/openvpn/user/${ovpn_user}/${ovpn_user}.ovpn"
+		zip_pw=$(echo Sk@$RANDOM$RANDOM)
+		text_file="${user_folder}${ovpn_user}/Readme.txt"
+		ovpn_file="${user_folder}${ovpn_user}/${ovpn_user}.ovpn"
 		#7z a -mhe -p${zip_pw} ${ovpn_user}.7z ${text_file} ${ovpn_file}
 		7z a -p${zip_pw} ${ovpn_user}.7z ${text_file} ${ovpn_file}
 
+		# Make dir /mnt/data
+		mount_dir=$(ls /mnt/ | grep i -c || true)
+		if [[ ${mount_dir} == 0 ]];
+		then
+			mkdir /mnt/data
+		fi
+
+		# Mount samba
+		mount.cifs //smaba/data /mnt/data -o guest,vers=2.0
+		
+		# Copy the archive file to samba folder.
+		\cp ${ovpn_user}.7z /mnt/data/OpenVPN_package/
+
 		# Confirm that the archive file has been successfully copied.
-		check_file=$(ls | grep ${ovpn_user}.7z -c || true)
+		check_file=$(ls /mnt/data/OpenVPN_package/ | grep ${ovpn_user}.7z -c || true)
 		if [[ ${check_file} == 1 ]];
 		then
-			true
+			rm -f ${ovpn_user}.7z
 		else
-			echo -e "${Y}${ovpn_user}.7z${E} ${B}does not exist, please check.${E}
+			echo -e "${Y}${ovpn_user}.7z${E} ${B}does not exist in${E} ${R}/mnt/data/OpenVPN_package/${E}"
+			echo -e "${B}Please manually copy the archive file to samba & Remove${E} ${R}/etc/openvpn/client/${ovpn_user}/Readme.txt${E}"
+			echo -e "${B}Remember umount${E} ${R}/samba/data${E}"
 			exit 0
 		fi
 
 		# Remove Readme.txt
-		rm -f /etc/openvpn/user/${ovpn_user}/Readme.txt
+		rm -f ${user_folder}${ovpn_user}/Readme.txt
+
+		# Umount samba.
+		umount /mnt/data
 		
 		# Show the archive file password to the screen and finished.
-		echo -e "${G}${ovpn_user}.7z${E} ${B}is here.${E}"
+		win_samba_vpn_dir=$(echo '\\\\samba\data\OpenVPN_package\')
+		echo -e "${G}${ovpn_user}.7z${E} ${B}has been copied to${E} ${R}${win_samba_vpn_dir} ${E}"
 		echo -e "${G}${ovpn_user}.7z${E} ${B}password is${E} ${Y}${zip_pw}${E} ${B}, add user finished.${E}"
 		break
 	elif [[ ${feature_choose} == 2 ]];
 	then
 		# Confirm the existence of users.
-		check_username=$(ls /etc/openvpn/user | grep ${ovpn_user} -c || true)
+		check_username=$(ls /etc/openvpn/client/ | grep ${ovpn_user} -c || true)
 		if [[ ${check_username} == 0 ]];
 		then
-			echo -e "${B}Can't find${E} ${Y}${ovpn_user}${E}${B} !  please check ${E}${R}/etc/openvpn/user/${E}"
+			echo -e "${B}Can't find${E} ${Y}${ovpn_user}${E}${B} !  please check ${E}${R}/etc/openvpn/client/${E}"
 			exit 0
 		fi
 
@@ -200,8 +218,8 @@ do
 		fi
 
 		# Start to revoke the user certificate.
-		source /etc/openvpn/easy-rsa/2.0/vars
-		sh /etc/openvpn/easy-rsa/2.0/revoke-full ${ovpn_user}
+		sh /etc/openvpn/easy-rsa/easyrsa revoke ${ovpn_user}
+		sh /etc/openvpn/easy-rsa/easyrsa gen-crl
 		break
 	elif [[ ${feature_choose} == D || ${feature_choose} == d ]];
 	then
@@ -235,8 +253,8 @@ do
 		read -p "$(echo -e "${R}Are you sure?(Y/N)${E}") " last_check
 		if [[ ${last_check} == Y || ${last_check} == y ]];
 		then
-			rm -rf /etc/openvpn/user/${ovpn_user}
-			rm -f /etc/openvpn/easy-rsa/2.0/keys/${ovpn_user}.*
+			rm -rf /etc/openvpn/client/${ovpn_user}
+			rm -f /etc/openvpn/easy-rsa/{issued/${ovpn_user}.crt,private/${ovpn_user}.key}
 			echo -e "${B}The deletion certificate has been finished. ${E}"
 		else
 			echo -e "${B}Okay...good choice.${E}"
@@ -250,5 +268,4 @@ do
 	fi
 	continue
 done
-
 
