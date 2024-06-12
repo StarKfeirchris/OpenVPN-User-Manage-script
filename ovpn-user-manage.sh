@@ -1,5 +1,5 @@
 #!/bin/bash
-# Release v5.0 ; last upsate: 20240126
+# Release v5.2 ; last upsate: 20240612
 
 # Set the execution environment, debug: set -xeo pipefail
 set -eo pipefail
@@ -16,26 +16,17 @@ cd /etc/openvpn/easy-rsa/
 
 # Check the system version and package.
 os=$(lsb_release -irs | xargs)
-if [[ ${os} == 'CentOS '* ]];
-then
-	check_rpm=$(rpm -qa | grep -E "p7zip|cifs" -c || true)
-	if [[ ${check_rpm} == 3 ]];
-	then
-		true
-	else
-		yum install p7zip p7zip-plugins cifs-utils -y
-	fi
-elif [[ ${os} == 'Ubuntu '* ]];
+if [[ ${os} == 'Ubuntu '* ]];
 then
 	check_dpkg=$(dpkg --get-selections | grep -E "p7zip|cifs" -c || true)
 	if [[ ${check_dpkg} == 2 ]];
 	then
 		true
 	else
-		apt-get install p7zip-full cifs-utils -y
+		apt-get install 7zip cifs-utils -y
 	fi
 else
-	echo -e "${R}This system is not CentOS or Ubuntu!${E}"
+	echo -e "${R}This system is not Ubuntu!${E}"
 	echo -e "${R}Please check your system.${E}"
 	exit 0
 fi
@@ -44,8 +35,8 @@ fi
 ovpn_config_head=$(echo 'client
 dev tun
 proto udp4
-remote vpn2.openvenserver.com 1194
-remote vpn.openvpnserver.com 1194
+remote vpn2.bridgewell.com 1194
+remote vpn.bridgewell.com 1194
 nobind
 persist-key
 persist-tun
@@ -139,7 +130,7 @@ do
 		echo '</ca>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		
 		echo '<cert>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
-		tail -n 20 ${user_folder}${ovpn_user}/${ovpn_user}.crt >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
+		cat ${user_folder}${ovpn_user}/${ovpn_user}.crt | grep -A22 'BEGIN' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		echo '</cert>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
 		
 		echo '<key>' >> ${user_folder}${ovpn_user}/${ovpn_user}.ovpn
@@ -151,23 +142,23 @@ do
 		echo ${readme_text} >> ${user_folder}${ovpn_user}/Readme.txt
 
 		# Create archive password & archive file, "-mhe" = Encryption filename extension.
-		zip_pw=$(echo Sk@$RANDOM$RANDOM)
+		zip_pw=$(echo pw@$RANDOM$RANDOM)
 		text_file="${user_folder}${ovpn_user}/Readme.txt"
 		ovpn_file="${user_folder}${ovpn_user}/${ovpn_user}.ovpn"
-		#7z a -mhe -p${zip_pw} ${ovpn_user}.7z ${text_file} ${ovpn_file}
-		7z a -p${zip_pw} ${ovpn_user}.7z ${text_file} ${ovpn_file}
+		#7zz a -mhe -p${zip_pw} ${ovpn_user}.7z ${text_file} ${ovpn_file}
+		7zz a -p${zip_pw} ${ovpn_user}.7z ${text_file} ${ovpn_file}
 
-		# Make dir /mnt/data
+		# Make dir /mnt/i
 		mount_dir=$(ls /mnt/ | grep i -c || true)
 		if [[ ${mount_dir} == 0 ]];
 		then
 			mkdir /mnt/data
 		fi
 
-		# Mount samba
+		# Mount coco/i
 		mount.cifs //smaba/data /mnt/data -o guest,vers=2.0
 		
-		# Copy the archive file to samba folder.
+		# Copy the archive file to coco folder.
 		\cp ${ovpn_user}.7z /mnt/data/OpenVPN_package/
 
 		# Confirm that the archive file has been successfully copied.
@@ -176,21 +167,21 @@ do
 		then
 			rm -f ${ovpn_user}.7z
 		else
-			echo -e "${Y}${ovpn_user}.7z${E} ${B}does not exist in${E} ${R}/mnt/data/OpenVPN_package/${E}"
-			echo -e "${B}Please manually copy the archive file to samba & Remove${E} ${R}/etc/openvpn/client/${ovpn_user}/Readme.txt${E}"
-			echo -e "${B}Remember umount${E} ${R}/samba/data${E}"
+			echo -e "${Y}${ovpn_user}.7z${E} ${B}does not exist in${E} ${R}/mnt/i/USER/Starck/OpenVPN_package/${E}"
+			echo -e "${B}Please manually copy the archive file to coco & Remove${E} ${R}/etc/openvpn/client/${ovpn_user}/Readme.txt${E}"
+			echo -e "${B}Remember umount${E} ${R}/mnt/i${E}"
 			exit 0
 		fi
 
 		# Remove Readme.txt
 		rm -f ${user_folder}${ovpn_user}/Readme.txt
 
-		# Umount samba.
-		umount /mnt/data
+		# Umount coco.
+		umount /mnt/i
 		
 		# Show the archive file password to the screen and finished.
-		win_samba_vpn_dir=$(echo '\\\\samba\data\OpenVPN_package\')
-		echo -e "${G}${ovpn_user}.7z${E} ${B}has been copied to${E} ${R}${win_samba_vpn_dir} ${E}"
+		win_coco_vpn_dir=$(echo '\\\\samba\data\OpenVPN_package\')
+		echo -e "${G}${ovpn_user}.7z${E} ${B}has been copied to${E} ${R}${win_coco_vpn_dir} ${E}"
 		echo -e "${G}${ovpn_user}.7z${E} ${B}password is${E} ${Y}${zip_pw}${E} ${B}, add user finished.${E}"
 		break
 	elif [[ ${feature_choose} == 2 ]];
